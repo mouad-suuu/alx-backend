@@ -1,66 +1,53 @@
 #!/usr/bin/env python3
-"""Least Frequently Used (LFU) caching module with LRU tie-breaker.
+"""Least Frequently Used caching module.
 """
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict
+
 from base_caching import BaseCaching
 
 
 class LFUCache(BaseCaching):
-    """Represents an object that stores and retrieves items
-    using an LFU removal mechanism with LRU tie-breaker
-    when the cache limit is reached.
+    """Represents an object that allows storing and
+    retrieving items from a dictionary with a LFU
+    removal mechanism when the limit is reached.
     """
-
     def __init__(self):
         """Initializes the cache.
         """
         super().__init__()
-        self.cache_data = {}
-        self.frequency = defaultdict(OrderedDict)
-        self.min_freq = 0
+        self.cache_data = OrderedDict()
+        self.keys_freq = OrderedDict()
 
     def put(self, key, item):
-        """Adds an item to the cache.
-        Removes the LFU item with LRU consideration if limit is exceeded.
+        """Adds an item in the cache.
         """
         if key is None or item is None:
             return
         if key in self.cache_data:
-            # Increment the frequency of the key
-            _, freq = self.cache_data[key]
-            self.cache_data[key] = (item, freq + 1)
-            del self.frequency[freq][key]
-            self.frequency[freq + 1][key] = item
-            if not self.frequency[freq]:
-                if freq == self.min_freq:
-                    self.min_freq += 1
-            freq += 1
+            # Increment the frequency
+            self.keys_freq[key] += 1
+            self.cache_data[key] = item
         else:
-            self.cache_data[key] = (item, 1)
-            self.frequency[1][key] = item
-            self.min_freq = 1
-
-        if len(self.cache_data) > BaseCaching.MAX_ITEMS:
-            oldest_key, _ = next(iter(self.frequency[self.min_freq].items()))
-            del self.frequency[self.min_freq][oldest_key]
-            del self.cache_data[oldest_key]
-            print("DISCARD:", oldest_key)
-            if not self.frequency[self.min_freq]:
-                self.min_freq += 1
+            if len(self.cache_data) >= BaseCaching.MAX_ITEMS:
+                # Find and remove the least frequently used item
+                lfu_key = min(self.keys_freq, key=lambda k: self.keys_freq[k])
+                self.cache_data.pop(lfu_key)
+                self.keys_freq.pop(lfu_key)
+                print("DISCARD:", lfu_key)
+            self.cache_data[key] = item
+            self.keys_freq[key] = 1
+        # Move the added or accessed item to the end to handle the tie by LRU
+        self.cache_data.move_to_end(key)
+        self.keys_freq.move_to_end(key)
 
     def get(self, key):
         """Retrieves an item by key.
-        Updates the item's frequency and recency of use.
-        Returns None if the key is not found or if key is None.
         """
-        if key is None or key not in self.cache_data:
-            return None
-        item, freq = self.cache_data[key]
-        # Update the item's frequency
-        del self.frequency[freq][key]
-        self.frequency[freq + 1][key] = item
-        self.cache_data[key] = (item, freq + 1)
-        if not self.frequency[freq]:
-            if freq == self.min_freq:
-                self.min_freq += 1
-        return item
+        if key is not None and key in self.cache_data:
+            # Increment the frequency
+            self.keys_freq[key] += 1
+            # Move the accessed item to the end to handle the tie by LRU
+            self.cache_data.move_to_end(key)
+            self.keys_freq.move_to_end(key)
+            return self.cache_data[key]
+        return None
