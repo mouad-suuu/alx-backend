@@ -5,9 +5,8 @@ from base_caching import BaseCaching
 
 
 class LIFOCache(BaseCaching):
-    """Represents an object that allows storing and
-    retrieving items from a dictionary with a LIFO
-    removal mechanism when the limit is reached.
+    """Represents an object that stores and retrieves items
+    using a LIFO removal mechanism when the cache limit is reached.
     """
 
     def __init__(self):
@@ -17,14 +16,14 @@ class LIFOCache(BaseCaching):
         self.last_key = None
 
     def put(self, key, item):
-        """Adds an item in the cache.
-        If the cache exceeds MAX_ITEMS, the last item
-        added will be removed (LIFO order).
+        """Adds an item to the cache.
+        Removes the last item added if limit is exceeded.
         """
         if key is None or item is None:
             return
         self.cache_data[key] = item
-        if self.last_key is not None and len(self.cache_data) > BaseCaching.MAX_ITEMS:
+        if (self.last_key is not None and
+                len(self.cache_data) > BaseCaching.MAX_ITEMS):
             discarded = self.last_key
             del self.cache_data[discarded]
             print("DISCARD:", discarded)
