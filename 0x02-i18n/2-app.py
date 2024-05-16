@@ -21,6 +21,8 @@ babel = Babel(app)
 
 @babel.localeselector
 def get_locale():
+      """a comment to test the check.
+    """
     return request.accept_languages.best_match(SUPPORTED_LANGUAGES.keys())
 
 
